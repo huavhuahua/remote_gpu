@@ -68,7 +68,7 @@ def get_imgs_and_masks_path(root_path, dataset, datatpye='training'):
     return list(zip(imgs_path, masks_path1, masks_path2, masks_path3, masks_path4))
 
 
-def get_imgs_and_masks_patch(img_data, patch_size, slice_patch_size, train=True, patch_num=1):
+def get_imgs_and_masks_patch(img_data, x_patch_size, y_patch_size, slice_patch_size, train=True, patch_num=1):
     """Return all the couples (img, mask)"""
     data = []
     if train == True:
@@ -78,16 +78,16 @@ def get_imgs_and_masks_patch(img_data, patch_size, slice_patch_size, train=True,
             # print(box_pos)
             start_s = box_pos[0] - slice_patch_size + 1
             end_s = box_pos[1] - 1
-            start_h = box_pos[2] - patch_size + 1
+            start_h = box_pos[2] - x_patch_size + 1
             end_h = box_pos[3] - 1
-            start_w = box_pos[4] - patch_size + 1
+            start_w = box_pos[4] - y_patch_size + 1
             end_w = box_pos[5] - 1
             # print(start_s, end_s, start_h, end_h, start_w, end_w)
 
-            start_h = max(start_h, int(patch_size / 2))
-            end_h = min(end_h, mask.shape[0] - (patch_size - int(patch_size / 2)))
-            start_w = max(start_w, int(patch_size / 2))
-            end_w = min(end_w, mask.shape[1] - (patch_size - int(patch_size / 2)))
+            start_h = max(start_h, int(x_patch_size / 2))
+            end_h = min(end_h, mask.shape[0] - (x_patch_size - int(x_patch_size / 2)))
+            start_w = max(start_w, int(y_patch_size / 2))
+            end_w = min(end_w, mask.shape[1] - (y_patch_size - int(y_patch_size / 2)))
             start_s = max(start_s, int(slice_patch_size / 2))
             end_s = min(end_s, mask.shape[2] - (slice_patch_size - int(slice_patch_size / 2)))
             print(start_s, end_s, start_h, end_h, start_w, end_w)
@@ -97,11 +97,11 @@ def get_imgs_and_masks_patch(img_data, patch_size, slice_patch_size, train=True,
             seed_s = np.random.randint(start_s, end_s + 1, patch_num)
 
             # img and mask
-            data_ = [[img[seed_h[i] - int(patch_size / 2):seed_h[i] + patch_size - int(patch_size / 2),
-                      seed_w[i] - int(patch_size / 2):seed_w[i] + patch_size - int(patch_size / 2),
+            data_ = [[img[seed_h[i] - int(x_patch_size / 2):seed_h[i] + x_patch_size - int(x_patch_size / 2),
+                      seed_w[i] - int(y_patch_size / 2):seed_w[i] + y_patch_size - int(y_patch_size / 2),
                       seed_s[i] - int(slice_patch_size / 2):seed_s[i] + slice_patch_size - int(slice_patch_size / 2)],
-                      mask[seed_h[i] - int(patch_size / 2):seed_h[i] + patch_size - int(patch_size / 2),
-                      seed_w[i] - int(patch_size / 2):seed_w[i] + patch_size - int(patch_size / 2),
+                      mask[seed_h[i] - int(x_patch_size / 2):seed_h[i] + x_patch_size - int(x_patch_size / 2),
+                      seed_w[i] - int(y_patch_size / 2):seed_w[i] + y_patch_size - int(y_patch_size / 2),
                       seed_s[i] - int(slice_patch_size / 2):seed_s[i] + slice_patch_size - int(slice_patch_size / 2)]]
                      for i in range(patch_num)]
             data += data_
@@ -109,15 +109,15 @@ def get_imgs_and_masks_patch(img_data, patch_size, slice_patch_size, train=True,
     else:
         for img, mask in img_data:
             # h and w and s (position list)
-            h = list(range(0, img.shape[0], patch_size))
-            w = list(range(0, img.shape[1], patch_size))
+            h = list(range(0, img.shape[0], x_patch_size))
+            w = list(range(0, img.shape[1], y_patch_size))
             s = list(range(0, img.shape[2], slice_patch_size))
 
             # if over the edge, get the patch beside the edge
-            if h[-1] + patch_size > img.shape[0]:
-                h[-1] = img.shape[0] - patch_size
-            if w[-1] + patch_size > img.shape[1]:
-                w[-1] = img.shape[1] - patch_size
+            if h[-1] + x_patch_size > img.shape[0]:
+                h[-1] = img.shape[0] - x_patch_size
+            if w[-1] + y_patch_size > img.shape[1]:
+                w[-1] = img.shape[1] - y_patch_size
             if s[-1] + slice_patch_size > img.shape[2]:
                 s[-1] = img.shape[2] - slice_patch_size
 
@@ -125,13 +125,13 @@ def get_imgs_and_masks_patch(img_data, patch_size, slice_patch_size, train=True,
             for i in range(len(h)):
                 for j in range(len(w)):
                     for k in range(len(s)):
-                        data.append([img[h[i]:h[i] + patch_size, w[j]:w[j] + patch_size, s[k]:s[k] + slice_patch_size],
-                                     mask[h[i]:h[i] + patch_size, w[j]:w[j] + patch_size, s[k]:s[k] + slice_patch_size],
+                        data.append([img[h[i]:h[i] + x_patch_size, w[j]:w[j] + x_patch_size, s[k]:s[k] + slice_patch_size],
+                                     mask[h[i]:h[i] + y_patch_size, w[j]:w[j] + y_patch_size, s[k]:s[k] + slice_patch_size],
                                      [h[i], w[j], s[k]]])
     return data
 
 
-def get_patch_for_one_img(img, mask, patch_size, slice_patch_size, train=True, patch_num=20):
+def get_patch_for_one_img(img, mask, x_patch_size, y_patch_size, slice_patch_size, train=True, patch_num=1):
     data = []
     if train == True:
         # print("img shape", np.shape(img))
@@ -143,16 +143,16 @@ def get_patch_for_one_img(img, mask, patch_size, slice_patch_size, train=True, p
         box_pos4 = binary_mask2bbox(mask[3])
         start_s = min(box_pos1[0], box_pos2[0], box_pos3[0], box_pos4[0]) - slice_patch_size + 1
         end_s = max(box_pos1[1], box_pos2[1], box_pos3[1], box_pos4[1]) - 1
-        start_h = min(box_pos1[2], box_pos2[2], box_pos3[2], box_pos4[2]) - patch_size + 1
+        start_h = min(box_pos1[2], box_pos2[2], box_pos3[2], box_pos4[2]) - x_patch_size + 1
         end_h = max(box_pos1[3], box_pos2[3], box_pos3[3], box_pos4[3]) - 1
-        start_w = min(box_pos1[4], box_pos2[4], box_pos3[4], box_pos4[4]) - patch_size + 1
+        start_w = min(box_pos1[4], box_pos2[4], box_pos3[4], box_pos4[4]) - y_patch_size + 1
         end_w = max(box_pos1[5], box_pos2[5], box_pos3[5], box_pos4[5]) - 1
         # print(start_s, end_s + 1 + slice_patch_size, start_h, end_h + 1 + patch_size, start_w, end_w + 1 + patch_size)
 
         start_h = max(start_h, 0)
-        end_h = min(end_h, mask[0].shape[0] - patch_size - 1)
+        end_h = min(end_h, mask[0].shape[0] - x_patch_size - 1)
         start_w = max(start_w, 0)
-        end_w = min(end_w, mask[0].shape[1] - patch_size - 1)
+        end_w = min(end_w, mask[0].shape[1] - y_patch_size - 1)
         start_s = max(start_s, 0)
         end_s = min(end_s, mask[0].shape[2] - slice_patch_size - 1)
         # print("shape", mask[0].shape[0], mask[0].shape[1], mask[0].shape[2])
@@ -167,11 +167,11 @@ def get_patch_for_one_img(img, mask, patch_size, slice_patch_size, train=True, p
         img = np.array(img)
         mask = np.array(mask)
         # img and mask
-        data_ = [[img[:, seed_h[i]:seed_h[i] + patch_size,
-                  seed_w[i]:seed_w[i] + patch_size,
+        data_ = [[img[:, seed_h[i]:seed_h[i] + x_patch_size,
+                  seed_w[i]:seed_w[i] + y_patch_size,
                   seed_s[i]:seed_s[i] + slice_patch_size],
-                  mask[:, seed_h[i]:seed_h[i] + patch_size,
-                  seed_w[i]:seed_w[i] + patch_size,
+                  mask[:, seed_h[i]:seed_h[i] + x_patch_size,
+                  seed_w[i]:seed_w[i] + y_patch_size,
                   seed_s[i]:seed_s[i] + slice_patch_size]]
                  for i in range(patch_num)]
         data += data_
@@ -179,17 +179,17 @@ def get_patch_for_one_img(img, mask, patch_size, slice_patch_size, train=True, p
     return data
 
 
-def get_patch_for_test(img, mask, patch_size, slice_patch_size):
+def get_patch_for_test(img, mask, x_patch_size, y_patch_size, slice_patch_size):
     data = []
-    h = list(range(0, img[0].shape[0], patch_size))
-    w = list(range(0, img[0].shape[1], patch_size))
+    h = list(range(0, img[0].shape[0], x_patch_size))
+    w = list(range(0, img[0].shape[1], y_patch_size))
     s = list(range(0, img[0].shape[2], slice_patch_size))
 
     # if over the edge, get the patch beside the edge
-    if h[-1] + patch_size > img[0].shape[0]:
-        h[-1] = img[0].shape[0] - patch_size
-    if w[-1] + patch_size > img[0].shape[1]:
-        w[-1] = img[0].shape[1] - patch_size
+    if h[-1] + x_patch_size > img[0].shape[0]:
+        h[-1] = img[0].shape[0] - x_patch_size
+    if w[-1] + y_patch_size > img[0].shape[1]:
+        w[-1] = img[0].shape[1] - y_patch_size
     if s[-1] + slice_patch_size > img[0].shape[2]:
         s[-1] = img[0].shape[2] - slice_patch_size
 
@@ -199,13 +199,13 @@ def get_patch_for_test(img, mask, patch_size, slice_patch_size):
     for i in range(len(h)):
         for j in range(len(w)):
             for k in range(len(s)):
-                data.append([img[:, h[i]:h[i] + patch_size, w[j]:w[j] + patch_size, s[k]:s[k] + slice_patch_size],
-                             mask[:, h[i]:h[i] + patch_size, w[j]:w[j] + patch_size, s[k]:s[k] + slice_patch_size],
+                data.append([img[:, h[i]:h[i] + x_patch_size, w[j]:w[j] + y_patch_size, s[k]:s[k] + slice_patch_size],
+                             mask[:, h[i]:h[i] + x_patch_size, w[j]:w[j] + y_patch_size, s[k]:s[k] + slice_patch_size],
                              [h[i], w[j], s[k]]])
     return data
 
 
-def batch(iterable, batch_size, patch_size, slice_patch_size, train=True):  # iterable 改为路径列表
+def batch(iterable, batch_size, x_patch_size, y_patch_size, slice_patch_size, train=True):  # iterable 改为路径列表
     """Yields lists by batch"""
     j = 0
     b = []
@@ -219,7 +219,7 @@ def batch(iterable, batch_size, patch_size, slice_patch_size, train=True):  # it
         img = [my_PreProc(nii_to_np(img_path))]
         mask = [nii_to_np(mask_path1), nii_to_np(mask_path2), nii_to_np(mask_path3), nii_to_np(mask_path4)]
         mask = np.round(mask / np.max(mask))
-        data = get_patch_for_one_img(img, mask, patch_size, slice_patch_size, train)
+        data = get_patch_for_one_img(img, mask, x_patch_size, y_patch_size, slice_patch_size, train)
         # data = get_imgs_and_masks_patch(list(zip(img, mask)), patch_size, slice_patch_size, train)
         for patch_idx, t in enumerate(data):
             j += 1

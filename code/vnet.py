@@ -65,7 +65,7 @@ class InputTransition(nn.Module):
         x16 = torch.cat((x, x, x, x, x, x, x, x,
                          x, x, x, x, x, x, x, x), 1)
         x8 = torch.cat((x, x, x, x, x, x, x, x), 1)
-        out = self.relu1(torch.add(out, x8))
+        out = self.relu1(torch.add(out, x16))
         return out
 
 
@@ -146,18 +146,18 @@ class OutputTransition(nn.Module):
 class VNet(nn.Module):
     # the number of convolutions in each layer corresponds
     # to what is in the actual prototxt, not the intent
-    def __init__(self, elu=True, nll=False, numclass=1):
+    def __init__(self, elu=True, nll=False, numclass=4):
         super(VNet, self).__init__()
-        self.in_tr = InputTransition(8, elu)
-        self.down_tr32 = DownTransition(8, 1, elu)
-        self.down_tr64 = DownTransition(16, 2, elu)
-        self.down_tr128 = DownTransition(32, 3, elu, dropout=True)
-        self.down_tr256 = DownTransition(64, 2, elu, dropout=True)
-        self.up_tr256 = UpTransition(128, 128, 2, elu, dropout=True)
-        self.up_tr128 = UpTransition(128, 64, 2, elu, dropout=True)
-        self.up_tr64 = UpTransition(64, 32, 1, elu)
-        self.up_tr32 = UpTransition(32, 16, 1, elu)
-        self.out_tr = OutputTransition(16, elu, nll, numclasss=numclass)
+        self.in_tr = InputTransition(16, elu)
+        self.down_tr32 = DownTransition(16, 1, elu)
+        self.down_tr64 = DownTransition(32, 2, elu)
+        self.down_tr128 = DownTransition(64, 3, elu, dropout=True)
+        self.down_tr256 = DownTransition(128, 2, elu, dropout=True)
+        self.up_tr256 = UpTransition(256, 256, 2, elu, dropout=True)
+        self.up_tr128 = UpTransition(256, 128, 2, elu, dropout=True)
+        self.up_tr64 = UpTransition(128, 64, 1, elu)
+        self.up_tr32 = UpTransition(64, 32, 1, elu)
+        self.out_tr = OutputTransition(32, elu, nll, numclasss=numclass)
 
 
     # The network topology as described in the diagram

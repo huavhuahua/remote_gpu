@@ -1,4 +1,4 @@
-# main.py -- DRIVE
+# main.py -- train for whole image
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -18,23 +18,24 @@ from preprocess import my_PreProc
 from dice_loss import BinaryDiceLoss
 
 root_path = r'../data'
-root_result = r'../result_muti_patch128'
+root_result = r'../result_muti_whole_image'
 root_model = os.path.join(root_result, 'model')
 os.makedirs(root_model, exist_ok=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--arch', '-a', metavar='ARCH', default='VNet')
 parser.add_argument('--root', default=root_path, help='path to dataset (images list file)')
-parser.add_argument('--dataset', default='CT_ero_256', help='CT, DRIVE or CHASEDB')
-parser.add_argument('--patch_size', type=int, default=128, help='patch size')
-parser.add_argument('--slice_patch_size', type=int, default=32, help='slice patch size')
-parser.add_argument('--lr', default=0.005, type=float, help='learning rate for training')
+parser.add_argument('--dataset', default='CT_whole_resize', help='CT, DRIVE or CHASEDB')
+parser.add_argument('--x_patch_size', type=int, default=512, help='x patch size')
+parser.add_argument('--y_patch_size', type=int, default=256, help='y patch size')
+parser.add_argument('--slice_patch_size', type=int, default=64, help='slice patch size')
+parser.add_argument('--lr', default=0.01, type=float, help='learning rate for training')
 parser.add_argument('--epochs', default=50, type=int, help='number of total epochs to run')
 parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number (useful on restarts)')
-parser.add_argument('--batch_size', type=int, default=1, help='input batch size')
-parser.add_argument('--optim', type=str, default='Adam', help='optim for training, Adam / SGD (default)')
+parser.add_argument('--batch_size', type=int, default=2, help='input batch size')
+parser.add_argument('--optim', type=str, default='SGD', help='optim for training, Adam / SGD (default)')
 parser.add_argument('--momentum', default=0.9, type=float, help='momentum for SGD')
-parser.add_argument('--weight_decay', default=0.005, type=float, help='weight_decay for SGD / Adam')
+parser.add_argument('--weight_decay', default=1e-4, type=float, help='weight_decay for SGD / Adam')
 parser.add_argument('--gpu', type=bool, default=True, help='use GPU or not')
 parser.add_argument('--model_path', type=str, default=root_model, help='model file to save')
 parser.add_argument('--resume_path', type=str, default=None, help='model file to resume to train')
@@ -90,7 +91,7 @@ def train_net(model, criterion, criterion2, optimizer, epoch, lr_cur):
 
     # data
     data_list = get_imgs_and_masks_path(args.root, args.dataset, datatpye='training')
-    dataloader = batch(data_list, args.batch_size, args.patch_size, args.slice_patch_size)
+    dataloader = batch(data_list, args.batch_size, args.x_patch_size, args.y_patch_size, args.slice_patch_size)
 
     # switch to train mode
     model.train()
@@ -111,39 +112,6 @@ def train_net(model, criterion, criterion2, optimizer, epoch, lr_cur):
         mask_pred_flat = masks_pred.view(-1)
         true_mask_flat = true_masks.view(-1)
 
-        '''loss更换'''
-        # mask_pred1 = masks_pred[:, 0, :, :]
-        # mask_pred2 = masks_pred[:, 1, :, :]
-        # mask_pred3 = masks_pred[:, 2, :, :]
-        # mask_pred4 = masks_pred[:, 3, :, :]
-        # true_mask1 = true_masks[:, 0, :, :]
-        # true_mask2 = true_masks[:, 1, :, :]
-        # true_mask3 = true_masks[:, 2, :, :]
-        # true_mask4 = true_masks[:, 3, :, :]
-
-        # masks_probs_flat1 = mask_pred1.view(-1)
-        # true_masks_flat1 = true_mask1.view(-1)
-        # masks_probs_flat2 = mask_pred2.view(-1)
-        # true_masks_flat2 = true_mask2.view(-1)
-        # masks_probs_flat3 = mask_pred3.view(-1)
-        # true_masks_flat3 = true_mask3.view(-1)
-        # masks_probs_flat4 = mask_pred4.view(-1)
-        # true_masks_flat4 = true_mask4.view(-1)
-
-        # loss_bce = (criterion(masks_probs_flat1, true_masks_flat1) +
-        #             criterion(masks_probs_flat2, true_masks_flat2) +
-        #             criterion(masks_probs_flat3, true_masks_flat3) +
-        #             criterion(masks_probs_flat4, true_masks_flat4))
-        # loss_bce = loss_bce / 4
-        # loss_dice = (criterion2(masks_probs_flat1, true_masks_flat1) +
-        #              criterion2(masks_probs_flat2, true_masks_flat2) +
-        #              criterion2(masks_probs_flat3, true_masks_flat3) +
-        #              criterion2(masks_probs_flat4, true_masks_flat4))
-        # loss_dice = loss_dice / 4
-        # loss = 0.5 * loss_bce + 0.5 * loss_dice
-        # loss = loss_bce
-        ''''''
-
         loss = criterion(mask_pred_flat, true_mask_flat)
         # print(loss)
         loss_epoch.append(loss.item())
@@ -161,7 +129,7 @@ def train_net(model, criterion, criterion2, optimizer, epoch, lr_cur):
     return loss_epoch
 
 
-def val_net(model, dataset_list, patch_size, slice_patch_size, val_patch_num=20):
+def val_net(model, dataset_list, x_patch_size, y_patch_size, slice_patch_size, val_patch_num=1):
     model.eval()
     loss_val = []
     for i, data_list in enumerate(dataset_list):
@@ -173,7 +141,7 @@ def val_net(model, dataset_list, patch_size, slice_patch_size, val_patch_num=20)
         img = [my_PreProc(nii_to_np(img_path))]
         mask = [nii_to_np(mask_path1), nii_to_np(mask_path2), nii_to_np(mask_path3), nii_to_np(mask_path4)]
         mask = np.round(mask / np.max(mask))
-        data = get_patch_for_one_img(img, mask, patch_size, slice_patch_size, train=True, patch_num=val_patch_num)
+        data = get_patch_for_one_img(img, mask, x_patch_size, y_patch_size, slice_patch_size, train=True, patch_num=val_patch_num)
         for i, b in enumerate(data):
             img_patch = b[0].astype(np.float32)
             true_mask_patch = b[1].astype(np.float32)
@@ -186,37 +154,8 @@ def val_net(model, dataset_list, patch_size, slice_patch_size, val_patch_num=20)
                 true_mask_patch = true_mask_patch.cuda()
 
             masks_pred = model(img_patch)
-            mask_pred1 = masks_pred[:, 0, :, :]
-            mask_pred2 = masks_pred[:, 1, :, :]
-            mask_pred3 = masks_pred[:, 2, :, :]
-            mask_pred4 = masks_pred[:, 3, :, :]
-            true_mask1 = true_mask_patch[:, 0, :, :]
-            true_mask2 = true_mask_patch[:, 1, :, :]
-            true_mask3 = true_mask_patch[:, 2, :, :]
-            true_mask4 = true_mask_patch[:, 3, :, :]
 
-            masks_probs_flat1 = mask_pred1.view(-1)
-            true_masks_flat1 = true_mask1.view(-1)
-            masks_probs_flat2 = mask_pred2.view(-1)
-            true_masks_flat2 = true_mask2.view(-1)
-            masks_probs_flat3 = mask_pred3.view(-1)
-            true_masks_flat3 = true_mask3.view(-1)
-            masks_probs_flat4 = mask_pred4.view(-1)
-            true_masks_flat4 = true_mask4.view(-1)
-
-            loss_bce = (criterion(masks_probs_flat1, true_masks_flat1) +
-                        criterion(masks_probs_flat2, true_masks_flat2) +
-                        criterion(masks_probs_flat3, true_masks_flat3) +
-                        criterion(masks_probs_flat4, true_masks_flat4))
-            loss_bce = loss_bce / 4
-            # loss_dice = (criterion2(masks_probs_flat1, true_masks_flat1) +
-            #              criterion2(masks_probs_flat2, true_masks_flat2) +
-            #              criterion2(masks_probs_flat3, true_masks_flat3) +
-            #              criterion2(masks_probs_flat4, true_masks_flat4))
-            # loss_dice = loss_dice / 4
-            # loss = 0.5 * loss_bce + 0.5 * loss_dice
-            loss = loss_bce
-            # loss = criterion(masks_pred.contiguous().view(-1), true_mask_patch.contiguous().view(-1))
+            loss = criterion(masks_pred.contiguous().view(-1), true_mask_patch.contiguous().view(-1))
             loss_val.append(loss.item())
             print('Epoch:{}, VALIDATION batch:{}/{}, Loss:{}'.format(epoch, i, len(data_list), loss.item()))
     print('VALIDATION Finished, Loss:{}'.format(np.mean(loss_val)))
@@ -272,7 +211,7 @@ if __name__ == '__main__':
         loss_train_epoch_mean.append(np.mean(loss_train_epoch))
 
         # evaluate on validation set
-        loss_val_epoch_mean.append(val_net(model, val_list, args.patch_size, args.slice_patch_size))
+        loss_val_epoch_mean.append(val_net(model, val_list, args.x_patch_size, args.y_paych_size, args.slice_patch_size))
 
         # save checkpoint and loss
         save_result(loss_train)
