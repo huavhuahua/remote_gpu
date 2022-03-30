@@ -54,9 +54,9 @@ class InputTransition(nn.Module):
         # self.bn1 = ContBatchNorm3d(16)
         # self.relu1 = ELUCons(elu, 16)
 
-        self.conv1 = nn.Conv3d(1, 8, kernel_size=5, padding=2)
-        self.bn1 = ContBatchNorm3d(8)
-        self.relu1 = ELUCons(elu, 8)
+        self.conv1 = nn.Conv3d(1, 16, kernel_size=5, padding=2)
+        self.bn1 = ContBatchNorm3d(16)
+        self.relu1 = ELUCons(elu, 16)
 
     def forward(self, x):
         # do we want a PRELU here as well?
